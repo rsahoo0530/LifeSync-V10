@@ -1,0 +1,8 @@
+{
+  "name": " LifeSync Pro - V10",
+  "description": "A comprehensive life tracking application featuring habit tracking, journaling, expense management, and analytics with a modern UI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
