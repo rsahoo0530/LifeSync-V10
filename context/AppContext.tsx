@@ -20,7 +20,8 @@ import {
     collection, 
     deleteDoc, 
     updateDoc,
-    onSnapshot
+    onSnapshot,
+    getDocs
 } from 'firebase/firestore';
 
 interface Toast {
@@ -49,10 +50,11 @@ interface AppContextType extends AppState {
   updateChallenge: (challenge: Challenge) => void;
   deleteChallenge: (id: string) => void;
   updateUser: (updates: Partial<User>, newPassword?: string) => Promise<void>;
+  deleteAccountData: () => Promise<void>;
   toggleSound: () => void;
   toggleDarkMode: () => void;
   playSound: (type: 'click' | 'success' | 'error' | 'sparkle') => void;
-  resetData: () => void;
+  resetData: () => void; // Deprecated local reset, keeping for interface compat
   importData: (data: string) => boolean;
   exportData: () => string;
   toasts: Toast[];
@@ -152,7 +154,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
             bio: localProfile.bio || 'New Member',
             gender: localProfile.gender || 'Not Specified',
-            dob: localProfile.dob || ''
+            dob: localProfile.dob || '',
+            secretKey: '' 
         });
 
         // 2. Setup Real-time Listeners (Sync & Update)
@@ -166,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                  // Decrypt Profile Data
                  let profileData = data.profile || {};
                  if (profileData) {
-                    profileData = decryptObject(profileData, uid, ['bio']);
+                    profileData = decryptObject(profileData, uid, ['bio', 'secretKey']);
                  }
 
                  setUser(prev => prev ? ({ ...prev, ...profileData }) : null);
@@ -227,7 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unsubChallenges = onSnapshot(collection(db, 'users', uid, 'challenges'), (snap: any) => {
             const data = snap.docs.map((d: any) => {
                 const raw = d.data() as Challenge;
-                return decryptObject(raw, uid, ['title']);
+                return decryptObject(raw, uid, ['title', 'description']);
             });
             setChallenges(data);
         }, (error) => console.log("Sync Challenges Error:", error.message));
@@ -451,21 +454,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 bio: updates.bio,
                 gender: updates.gender,
                 dob: updates.dob,
-                avatar: updates.avatar
+                avatar: updates.avatar,
+                secretKey: updates.secretKey
             };
             
             Object.keys(profileUpdates).forEach(key => (profileUpdates as any)[key] === undefined && delete (profileUpdates as any)[key]);
-            const encryptedUpdates = encryptObject(profileUpdates, user.id, ['bio']);
+            
+            // Encrypt sensitive fields
+            const encryptedUpdates = encryptObject(profileUpdates, user.id, ['bio', 'secretKey']);
 
             await updateDoc(doc(db, 'users', user.id), { profile: encryptedUpdates });
             playSound('success');
             showToast('Profile updated.', 'success');
         } catch (error: any) {
             console.error("Update User Error", error);
-            showToast('Failed to update profile.', 'error');
+            if (error.code === 'auth/requires-recent-login') {
+                showToast('Security Alert: You need to re-login to change sensitive settings like password.', 'error');
+            } else {
+                showToast('Failed to update profile.', 'error');
+            }
         }
     }
   };
+
+  // --- Deletion Logic ---
+  const deleteAccountData = async () => {
+    if (!user) return;
+    
+    try {
+        const collectionsToDelete = ['tasks', 'proofs', 'journal', 'todos', 'expenses', 'challenges'];
+        
+        // 1. Delete all Subcollections
+        for (const colName of collectionsToDelete) {
+            const snap = await getDocs(collection(db, 'users', user.id, colName));
+            const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
+            await Promise.all(deletePromises);
+        }
+
+        // 2. Delete Main User Doc
+        await deleteDoc(doc(db, 'users', user.id));
+
+        // 3. Clear Local Storage
+        const userKey = `${DATA_PREFIX}${user.id}`;
+        localStorage.removeItem(userKey);
+
+        playSound('success');
+        showToast('Account data deleted successfully.', 'success');
+        
+        // 4. Logout
+        await signOut(auth);
+    } catch (error) {
+        console.error("Delete Account Error", error);
+        showToast('Failed to delete data. Try again.', 'error');
+    }
+  };
+
 
   // --- Data Functions (Direct Database Writes) ---
   const addTask = async (task: Task) => {
@@ -597,7 +640,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addChallenge = async (challenge: Challenge) => {
       if (!user) return;
       try {
-          const encryptedChallenge = encryptObject(challenge, user.id, ['title']);
+          const encryptedChallenge = encryptObject(challenge, user.id, ['title', 'description']);
           await setDoc(doc(db, 'users', user.id, 'challenges', challenge.id), encryptedChallenge);
           playSound('success');
           showToast('New Quest Started! Good Luck!', 'success');
@@ -610,7 +653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateChallenge = async (challenge: Challenge) => {
       if (!user) return;
       try {
-          const encryptedChallenge = encryptObject(challenge, user.id, ['title']);
+          const encryptedChallenge = encryptObject(challenge, user.id, ['title', 'description']);
           await updateDoc(doc(db, 'users', user.id, 'challenges', challenge.id), encryptedChallenge as any);
       } catch (e) {
           console.error(e);
@@ -630,12 +673,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleDarkMode = () => setSettings(s => ({ ...s, darkMode: !s.darkMode }));
 
   const resetData = async () => {
-    if (user) {
-        const userKey = `${DATA_PREFIX}${user.id}`;
-        localStorage.removeItem(userKey);
-        playSound('click');
-        showToast('Local backup cleared.', 'info');
-    }
+     // Legacy local reset, not used in UI anymore but keeping for interface match
   };
 
   const exportData = () => {
@@ -671,7 +709,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addTodo, toggleTodo, deleteTodo, 
       addExpense, deleteExpense, 
       addChallenge, updateChallenge, deleteChallenge,
-      updateUser,
+      updateUser, deleteAccountData,
       toggleSound, toggleDarkMode, playSound, resetData, importData, exportData, showToast
     }}>
       {children}

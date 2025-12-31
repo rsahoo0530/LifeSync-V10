@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isFuture, addMonths, subMonths, isWithinInterval, parseISO, differenceInCalendarDays, isPast } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isFuture, addMonths, subMonths, isWithinInterval, parseISO, differenceInCalendarDays, isPast, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Lock, Check, XCircle, Gift, Info, Calendar as CalIcon } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { MarkTaskModal } from '../components/modals/MarkTaskModal';
@@ -62,6 +62,7 @@ export const Calendar: React.FC = () => {
     
     // Check future against REAL TIME
     const realNow = getRealTime();
+    // Strictly future dates (not today)
     if (isFuture(day) && !isSameDay(day, realNow)) return 'future';
 
     if (completedCount === tasksOnDay.length) return 'all';
@@ -80,9 +81,7 @@ export const Calendar: React.FC = () => {
   };
 
   const handleMarkConfirm = (taskId: string, proof: Proof) => {
-      // We need to override the proof date to match the SELECTED calendar day, not just today
-      // Although the requirement "user can mark pending task... past three days" implies we mark FOR that day.
-      // Proof.date is usually "when it was done", but in this context it maps to the habit slot.
+      // Use the SELECTED calendar day for the proof date
       if (selectedDay) {
           proof.date = format(selectedDay, 'yyyy-MM-dd'); 
       }
@@ -151,7 +150,7 @@ export const Calendar: React.FC = () => {
                                 ${isToday ? 'bg-primary text-white shadow-lg shadow-primary/30 scale-110 z-10' : ''}
                                 ${isSelected && !isToday ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500' : ''}
                                 ${!isToday && !isSelected ? 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200' : ''}
-                                ${isFutureDate ? 'opacity-50' : 'cursor-pointer'}
+                                ${isFutureDate ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                                 ${holiday && !isToday ? 'border-2 border-pink-200 dark:border-pink-900 text-pink-500' : ''}
                             `}
                         >
@@ -177,37 +176,40 @@ export const Calendar: React.FC = () => {
           </div>
       </div>
 
-      {/* Occasions Display Section */}
-      <div className="space-y-4">
-          {selectedDay && getHolidayForDay(selectedDay) && (
-              <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-4 rounded-2xl shadow-lg animate-fade-in flex items-center justify-center gap-3">
-                  <Gift size={24} className="animate-bounce" />
-                  <div className="text-center">
-                      <p className="text-sm opacity-90 uppercase tracking-widest font-semibold">{format(selectedDay, 'MMMM do')}</p>
-                      <p className="text-xl font-bold">{getHolidayForDay(selectedDay)}</p>
+      {/* Selected Day Info & Occasions */}
+      {selectedDay && (
+          <div className="space-y-4 animate-slide-up">
+              {getHolidayForDay(selectedDay) && (
+                  <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-4 rounded-2xl shadow-lg flex items-center justify-center gap-3">
+                      <Gift size={24} className="animate-bounce" />
+                      <div className="text-center">
+                          <p className="text-sm opacity-90 uppercase tracking-widest font-semibold">{format(selectedDay, 'MMMM do')}</p>
+                          <p className="text-xl font-bold">{getHolidayForDay(selectedDay)}</p>
+                      </div>
                   </div>
-              </div>
-          )}
+              )}
+          </div>
+      )}
 
-          <div className="bg-pink-50 dark:bg-pink-900/10 rounded-2xl p-6 border border-pink-100 dark:border-pink-900/30">
-              <h3 className="font-bold text-lg mb-4 text-pink-800 dark:text-pink-300 flex items-center gap-2">
-                  <CalIcon size={20} /> Occasions this Month ({format(currentDate, 'MMMM')})
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {getHolidaysInMonth().length > 0 ? (
-                      getHolidaysInMonth().map(([dateStr, name]) => {
-                          const day = dateStr.split('-')[1];
-                          return (
-                              <div key={dateStr} className="bg-white dark:bg-darkcard p-3 rounded-xl flex items-center gap-3 shadow-sm">
-                                  <span className="font-bold text-xl text-pink-500 w-8 text-center">{day}</span>
-                                  <span className="text-gray-700 dark:text-gray-300 font-medium">{name}</span>
-                              </div>
-                          );
-                      })
-                  ) : (
-                      <p className="text-gray-500 italic">No major holidays listed for this month.</p>
-                  )}
-              </div>
+      {/* General Occasions this Month (Always visible below calendar grid unless day selected covers it? No, keeping it always is good context) */}
+      <div className="bg-pink-50 dark:bg-pink-900/10 rounded-2xl p-6 border border-pink-100 dark:border-pink-900/30">
+          <h3 className="font-bold text-lg mb-4 text-pink-800 dark:text-pink-300 flex items-center gap-2">
+              <CalIcon size={20} /> Occasions this Month ({format(currentDate, 'MMMM')})
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {getHolidaysInMonth().length > 0 ? (
+                  getHolidaysInMonth().map(([dateStr, name]) => {
+                      const day = dateStr.split('-')[1];
+                      return (
+                          <div key={dateStr} className="bg-white dark:bg-darkcard p-3 rounded-xl flex items-center gap-3 shadow-sm">
+                              <span className="font-bold text-xl text-pink-500 w-8 text-center">{day}</span>
+                              <span className="text-gray-700 dark:text-gray-300 font-medium">{name}</span>
+                          </div>
+                      );
+                  })
+              ) : (
+                  <p className="text-gray-500 italic">No major holidays listed for this month.</p>
+              )}
           </div>
       </div>
 
@@ -252,10 +254,16 @@ export const Calendar: React.FC = () => {
                          })}
                      </div>
                  )}
-                 {isTaskLocked(selectedDay) && !isFuture(selectedDay) && (
+                 {isTaskLocked(selectedDay) && !isFuture(selectedDay) && !isSameDay(selectedDay, getRealTime()) && (
                      <div className="text-center text-xs text-red-400 flex items-center justify-center gap-1">
                          <Info size={12} />
                          <span>Past dates older than 3 days cannot be modified.</span>
+                     </div>
+                 )}
+                  {isFuture(selectedDay) && !isSameDay(selectedDay, getRealTime()) && (
+                     <div className="text-center text-xs text-gray-400 flex items-center justify-center gap-1">
+                         <Info size={12} />
+                         <span>Cannot mark future tasks.</span>
                      </div>
                  )}
              </div>

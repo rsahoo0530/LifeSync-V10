@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -57,6 +58,21 @@
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      /* Fix Date Picker Icon Visibility in Light/Dark Modes */
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.6;
+        transition: 0.2s;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+      }
+      
+      /* Force dark icon in light mode, light icon in dark mode logic handles auto via color-scheme usually, but forcing invert helps in custom themes */
+      .dark input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
       }
     </style>
   <script type="importmap">

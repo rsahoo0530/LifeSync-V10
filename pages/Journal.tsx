@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { JournalEntry } from '../types';
@@ -14,7 +15,8 @@ export const Journal: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   
   // Filter States
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [activeSearchTerm, setActiveSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -24,6 +26,7 @@ export const Journal: React.FC = () => {
   const [newMood, setNewMood] = useState('😊');
   const [newImages, setNewImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]); // Added explicit date picker support
 
   // Edit State
   const [editSubject, setEditSubject] = useState('');
@@ -42,7 +45,7 @@ export const Journal: React.FC = () => {
               userId: 'current',
               subject: newSubject,
               content: newContent,
-              date: new Date().toISOString(),
+              date: new Date(entryDate).toISOString(), // Use selected date
               mood: newMood,
               images: imageUrls,
               createdAt: new Date().toISOString()
@@ -52,6 +55,7 @@ export const Journal: React.FC = () => {
           setNewContent('');
           setNewImages([]);
           setNewMood('😊');
+          setEntryDate(new Date().toISOString().split('T')[0]);
       } catch (e) {
           console.error(e);
       } finally {
@@ -84,9 +88,16 @@ export const Journal: React.FC = () => {
       setIsEditing(false);
   };
 
+  const handleSearchClick = () => {
+      setActiveSearchTerm(searchInput);
+      playSound('click');
+  };
+
   const filteredJournal = useMemo(() => {
       return journal.filter(j => {
-          const matchesSearch = j.subject.toLowerCase().includes(searchTerm.toLowerCase()) || j.content.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchesSearch = activeSearchTerm === '' || 
+              j.subject.toLowerCase().includes(activeSearchTerm.toLowerCase()) || 
+              j.content.toLowerCase().includes(activeSearchTerm.toLowerCase());
           
           let matchesDate = true;
           if (startDate || endDate) {
@@ -100,7 +111,7 @@ export const Journal: React.FC = () => {
           
           return matchesSearch && matchesDate;
       });
-  }, [journal, searchTerm, startDate, endDate]);
+  }, [journal, activeSearchTerm, startDate, endDate]);
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
 
@@ -113,18 +124,23 @@ export const Journal: React.FC = () => {
 
        {/* Inline Creation */}
        <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 transition-all focus-within:ring-2 focus-within:ring-primary/20">
-           {/* ... Input fields same as before ... */}
-            <div className="mb-4">
+            <div className="flex justify-between items-center mb-4">
                <input 
-                 className="w-full bg-transparent text-xl font-bold placeholder-gray-400 border-none focus:ring-0 p-0 text-gray-900 dark:text-white"
+                 className="w-full bg-transparent text-xl font-bold placeholder-gray-400 border-none focus:ring-0 p-0 text-gray-900 dark:text-white outline-none"
                  placeholder="Title of your entry..."
                  value={newSubject}
                  onChange={e => setNewSubject(e.target.value)}
                />
+               <input 
+                  type="date" 
+                  className="bg-transparent border-none text-xs text-gray-400 focus:ring-0 outline-none text-right"
+                  value={entryDate}
+                  onChange={e => setEntryDate(e.target.value)}
+               />
            </div>
            <div className="mb-4">
                <textarea 
-                 className="w-full bg-transparent resize-none border-none focus:ring-0 p-0 text-gray-600 dark:text-gray-300 min-h-[120px]"
+                 className="w-full bg-transparent resize-none border-none focus:ring-0 p-0 text-gray-600 dark:text-gray-300 min-h-[120px] outline-none"
                  placeholder="What's on your mind today?"
                  value={newContent}
                  onChange={e => setNewContent(e.target.value)}
@@ -160,14 +176,19 @@ export const Journal: React.FC = () => {
 
        {/* Filters */}
        <div className="bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row gap-4 items-center">
-           <div className="relative flex-1 w-full">
-               <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
-               <input 
-                 className={inputClass + " pl-10 py-2"} 
-                 placeholder="Search entries..." 
-                 value={searchTerm}
-                 onChange={e => setSearchTerm(e.target.value)}
-               />
+           <div className="relative flex-1 w-full flex items-center gap-2">
+               <div className="relative flex-1">
+                   <input 
+                     className={inputClass + " pl-4 py-2"} 
+                     placeholder="Type to search..." 
+                     value={searchInput}
+                     onChange={e => setSearchInput(e.target.value)}
+                     onKeyDown={e => e.key === 'Enter' && handleSearchClick()}
+                   />
+               </div>
+               <Button onClick={handleSearchClick} className="px-4 py-2">
+                   <Search size={18} />
+               </Button>
            </div>
            
            <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
@@ -185,8 +206,8 @@ export const Journal: React.FC = () => {
                  value={endDate} 
                  onChange={e => setEndDate(e.target.value)} 
                />
-               {(startDate || endDate) && (
-                   <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-xs text-red-500 hover:underline whitespace-nowrap px-2">Clear</button>
+               {(startDate || endDate || activeSearchTerm) && (
+                   <button onClick={() => { setStartDate(''); setEndDate(''); setActiveSearchTerm(''); setSearchInput(''); }} className="text-xs text-red-500 hover:underline whitespace-nowrap px-2">Clear</button>
                )}
            </div>
        </div>

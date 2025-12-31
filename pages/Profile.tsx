@@ -4,8 +4,8 @@ import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
 import { uploadImage } from '../services/storageService';
 import { User } from '../types';
-import { Camera, Mail, User as UserIcon, Calendar, Info, Lock, Clock } from 'lucide-react';
-import { differenceInYears, parseISO } from 'date-fns';
+import { Camera, Mail, User as UserIcon, Calendar, Info, Lock, Clock, Key } from 'lucide-react';
+import { differenceInYears } from 'date-fns';
 
 export const Profile: React.FC = () => {
   const { user, updateUser, playSound, showToast } = useApp();
@@ -119,7 +119,14 @@ export const Profile: React.FC = () => {
                     </div>
                     <div>
                         <label className={labelClass}><Calendar size={14} className="inline mr-1"/> Date of Birth</label>
-                        <input type="date" disabled={!isEditing} className={inputClass} value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} />
+                        <input 
+                            type="date" 
+                            max={new Date().toISOString().split('T')[0]} // Valid: No future dates
+                            disabled={!isEditing} 
+                            className={inputClass} 
+                            value={formData.dob || ''} 
+                            onChange={e => setFormData({...formData, dob: e.target.value})} 
+                        />
                     </div>
                     <div>
                         <label className={labelClass}><Info size={14} className="inline mr-1"/> Gender</label>
@@ -145,6 +152,22 @@ export const Profile: React.FC = () => {
                             <input disabled={!isEditing} type="password" className={inputClass} placeholder="New password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                             <p className="text-xs text-gray-500 mt-2">Leave blank to keep current password.</p>
                         </div>
+                    </div>
+                    
+                    {/* Secret Key Section */}
+                    <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <label className={labelClass}><Key size={14} className="inline mr-1"/> Data Deletion Secret Key</label>
+                        <div className="flex gap-2">
+                            <input 
+                                disabled={!isEditing} 
+                                type="password" 
+                                className={inputClass} 
+                                placeholder="Set a secure phrase to enable account deletion"
+                                value={formData.secretKey || ''} 
+                                onChange={e => setFormData({...formData, secretKey: e.target.value})} 
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">You must set this key to be able to reset/delete your account data later.</p>
                     </div>
                 </div>
 

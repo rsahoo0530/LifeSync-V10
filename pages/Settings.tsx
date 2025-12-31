@@ -1,11 +1,19 @@
-import React, { useRef } from 'react';
+
+import React, { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/Button';
-import { Volume2, VolumeX, Moon, Sun, Download, Upload, RefreshCw } from 'lucide-react';
+import { Volume2, VolumeX, Moon, Sun, Download, Upload, RefreshCw, Trash2, AlertOctagon } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
+import { useNavigate } from 'react-router-dom';
 
 export const Settings: React.FC = () => {
-  const { settings, toggleSound, toggleDarkMode, resetData, exportData, importData, user } = useApp();
+  const { settings, toggleSound, toggleDarkMode, deleteAccountData, exportData, importData, user, showToast } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [secretInput, setSecretInput] = useState('');
+  const [remarkInput, setRemarkInput] = useState('');
 
   const handleExport = () => {
       const data = exportData();
@@ -29,6 +37,29 @@ export const Settings: React.FC = () => {
           }
       };
       reader.readAsText(file);
+  };
+
+  const handleDeleteConfirm = async () => {
+      if (!user?.secretKey) {
+          showToast('Please set a Secret Key in your Profile first.', 'error');
+          setIsDeleteModalOpen(false);
+          navigate('/profile');
+          return;
+      }
+
+      if (secretInput !== user.secretKey) {
+          showToast('Incorrect Secret Key.', 'error');
+          return;
+      }
+
+      if (!remarkInput.trim()) {
+          showToast('Please provide a remark.', 'error');
+          return;
+      }
+
+      // Proceed with deletion
+      await deleteAccountData();
+      // Context handles navigation to login on success via signOut
   };
 
   return (
@@ -87,13 +118,53 @@ export const Settings: React.FC = () => {
              <hr className="dark:border-gray-700" />
              
              {/* Danger Zone */}
-             <div>
-                <h3 className="font-medium text-red-500 mb-4">Danger Zone</h3>
-                <Button variant="danger" onClick={() => { if (confirm('Are you sure? This will delete all local data.')) resetData(); }}>
-                    <RefreshCw size={16} /> Reset All Data
+             <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
+                <h3 className="font-medium text-red-600 dark:text-red-400 mb-2 flex items-center gap-2">
+                    <AlertOctagon size={18} /> Danger Zone
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">Permanently delete all your data including tasks, journal entries, and proofs. This action cannot be undone.</p>
+                <Button variant="danger" onClick={() => setIsDeleteModalOpen(true)}>
+                    <Trash2 size={16} /> Reset All Data
                 </Button>
              </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Data Reset">
+            <div className="space-y-4">
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                    Warning: You are about to wipe all your data from the server.
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-medium mb-1">Enter Secret Key</label>
+                    <input 
+                        type="password" 
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-black/20 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="Your Profile Secret Key"
+                        value={secretInput}
+                        onChange={e => setSecretInput(e.target.value)}
+                    />
+                     {!user?.secretKey && <p className="text-xs text-red-500 mt-1">You have not set a Secret Key in your Profile yet.</p>}
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Reason (Remark)</label>
+                    <input 
+                        type="text" 
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-black/20 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="Why are you deleting?"
+                        value={remarkInput}
+                        onChange={e => setRemarkInput(e.target.value)}
+                    />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                    <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+                    <Button variant="danger" onClick={handleDeleteConfirm}>Confirm Delete</Button>
+                </div>
+            </div>
+        </Modal>
     </div>
   );
 };

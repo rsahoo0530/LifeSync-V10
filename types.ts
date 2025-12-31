@@ -10,6 +10,7 @@ export interface User {
   bio?: string;
   gender?: string;
   dob?: string;
+  secretKey?: string; // New field for data deletion security
 }
 
 export interface Task {
@@ -70,9 +71,10 @@ export interface Challenge {
   id: string;
   userId: string;
   title: string;
+  description?: string; // Added description
   duration: number; // 3, 7, 21, 30
   startDate: string;
-  linkedTaskId?: string;
+  linkedTaskId?: string | null; // Changed to allow null for Firestore
   status: 'Active' | 'Completed' | 'Failed';
   progress: string[]; // Dates completed YYYY-MM-DD
   rescueUsed: boolean;

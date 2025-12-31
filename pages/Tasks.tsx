@@ -111,11 +111,31 @@ export const Tasks: React.FC = () => {
   const calculateProgress = (task: Task) => {
       const start = parseISO(task.startDate);
       const end = parseISO(task.endDate);
-      const totalDuration = Math.max(1, differenceInCalendarDays(end, start) + 1); // Inclusive
+      const today = getRealTime();
+      
+      const totalDuration = differenceInCalendarDays(end, start) + 1; // Inclusive
+      const daysPassed = differenceInCalendarDays(today, start) + 1;
+      
+      // If duration is effectively infinite (> 1 year) or task is "ongoing", treat differently
+      const isOngoing = totalDuration > 365;
+
       const completedCount = task.completedDates.length;
       
-      const percentage = Math.min(100, Math.max(0, (completedCount / totalDuration) * 100));
-      return { percentage, completedCount, totalDuration };
+      let percentage = 0;
+      let label = "";
+
+      if (isOngoing) {
+          // For ongoing tasks, percentage could be streak based or consistency
+          // Let's use 30-day consistency as a metric if ongoing
+          percentage = Math.min(100, (completedCount / Math.max(1, daysPassed)) * 100);
+          label = "Consistency";
+      } else {
+          // For fixed duration, % of total duration
+          percentage = Math.min(100, Math.max(0, (completedCount / totalDuration) * 100));
+          label = "Completion";
+      }
+
+      return { percentage, completedCount, totalDuration, isOngoing, label };
   };
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
@@ -166,7 +186,7 @@ export const Tasks: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredTasks.map(task => {
             const chartData = getChartData(task);
-            const { percentage, completedCount, totalDuration } = calculateProgress(task);
+            const { percentage, completedCount, totalDuration, isOngoing, label } = calculateProgress(task);
             
             return (
                 <div 
@@ -200,7 +220,7 @@ export const Tasks: React.FC = () => {
                         {/* Enhanced Progress Bar */}
                         <div className="mb-6 group/progress relative">
                             <div className="flex justify-between text-xs text-gray-500 mb-1 font-medium">
-                                <span>Timeline Progress</span>
+                                <span>{isOngoing ? 'Overall Consistency' : 'Timeline Progress'}</span>
                                 <span>{percentage.toFixed(0)}%</span>
                             </div>
                             <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -210,9 +230,14 @@ export const Tasks: React.FC = () => {
                                 ></div>
                             </div>
                             
-                            {/* Hover Tooltip */}
-                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover/progress:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
-                                {completedCount} days done out of {totalDuration} total days
+                            {/* Interactive Hover Tooltip */}
+                            <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover/progress:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl border border-gray-700">
+                                <div className="font-bold text-center mb-1">{label}</div>
+                                {isOngoing ? (
+                                    <span>{completedCount} total completions</span>
+                                ) : (
+                                    <span>{completedCount} / {totalDuration} days completed</span>
+                                )}
                                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                             </div>
                         </div>
@@ -345,27 +370,27 @@ export const Tasks: React.FC = () => {
       <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="Create New Task">
         <form onSubmit={handleCreate} className="space-y-5">
             <div>
-                <label className={labelClass}>Task Name</label>
+                <label className={labelClass}>Task Name *</label>
                 <input required className={inputClass} value={newTask.name || ''} onChange={e => setNewTask({...newTask, name: e.target.value})} placeholder="e.g., Read 10 pages" />
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className={labelClass}>Type</label>
-                    <select className={inputClass} value={newTask.type} onChange={e => setNewTask({...newTask, type: e.target.value as TaskType})}>
+                    <label className={labelClass}>Type *</label>
+                    <select required className={inputClass} value={newTask.type} onChange={e => setNewTask({...newTask, type: e.target.value as TaskType})}>
                         <option value="Habit">Habit</option>
                         <option value="Goal">Goal</option>
                     </select>
                 </div>
                 <div>
-                    <label className={labelClass}>Category</label>
-                    <select className={inputClass} value={newTask.category} onChange={e => setNewTask({...newTask, category: e.target.value as Category})}>
+                    <label className={labelClass}>Category *</label>
+                    <select required className={inputClass} value={newTask.category} onChange={e => setNewTask({...newTask, category: e.target.value as Category})}>
                         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
             </div>
             <div>
-                <label className={labelClass}>Why do you want this?</label>
-                <textarea className={inputClass} rows={2} value={newTask.why || ''} onChange={e => setNewTask({...newTask, why: e.target.value})} placeholder="Motivation..." />
+                <label className={labelClass}>Why do you want this? *</label>
+                <textarea required className={inputClass} rows={2} value={newTask.why || ''} onChange={e => setNewTask({...newTask, why: e.target.value})} placeholder="Motivation..." />
             </div>
             <div>
                 <label className={labelClass}>Penalty (Optional)</label>
@@ -373,7 +398,7 @@ export const Tasks: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className={labelClass}>Start Date</label>
+                    <label className={labelClass}>Start Date *</label>
                     <input type="date" required className={inputClass} value={newTask.startDate?.split('T')[0] || ''} onChange={e => setNewTask({...newTask, startDate: new Date(e.target.value).toISOString()})} />
                 </div>
                 <div>

@@ -2,22 +2,26 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { QUOTES } from '../constants';
-import { format, subDays, addDays, isBefore, parseISO } from 'date-fns';
-import { TrendingUp, CheckCircle, Flame, Activity, Heart, BookOpen, MoreHorizontal, DollarSign, Quote, AlertTriangle, Clock, Calendar } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { format, subDays, addDays, isBefore, parseISO, startOfDay } from 'date-fns';
+import { TrendingUp, CheckCircle, Flame, Activity, Heart, BookOpen, MoreHorizontal, DollarSign, Quote, AlertTriangle, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AreaChart, Area, ResponsiveContainer, Tooltip as ReTooltip } from 'recharts';
 import { Confetti } from '../components/ui/Confetti';
 import { getRealTime, getRealDateString } from '../services/timeService';
 
 export const Dashboard: React.FC = () => {
-  const { user, tasks, todos, expenses, journal } = useApp();
+  const { user, tasks, todos, expenses, journal, proofs } = useApp();
   const [showConfetti, setShowConfetti] = useState(false);
   const [realNow, setRealNow] = useState(new Date());
+  const [quoteIndex, setQuoteIndex] = useState(0);
+  const navigate = useNavigate();
 
-  // Update time reference on mount to be sure we have latest synced time
+  // Update time reference on mount
   useEffect(() => {
       setRealNow(getRealTime());
-      const interval = setInterval(() => setRealNow(getRealTime()), 60000); // Update minute
+      const interval = setInterval(() => setRealNow(getRealTime()), 60000); 
+      // Set random quote index on mount
+      setQuoteIndex(Math.floor(Math.random() * QUOTES.length));
       return () => clearInterval(interval);
   }, []);
 
@@ -25,18 +29,23 @@ export const Dashboard: React.FC = () => {
   const yesterdayStr = format(addDays(realNow, -1), 'yyyy-MM-dd');
   
   const pendingTodos = todos.filter(t => !t.completed).length;
-  const quote = QUOTES[realNow.getDate() % QUOTES.length];
+  const quote = QUOTES[quoteIndex];
   
-  // Logic for Broken Streak Alerts (Missed Yesterday)
+  // Broken Streak Alerts
   const brokenStreaks = useMemo(() => {
       return tasks.filter(t => {
           const startDate = parseISO(t.startDate);
-          const yesterday = addDays(realNow, -1);
-          // Only care if task started before today
-          if (isBefore(startDate, realNow)) {
-              // If not done yesterday AND not done today (yet), it's a break/risk
+          const yesterdayDate = subDays(realNow, 1);
+          
+          // Only check tasks that started BEFORE yesterday (exclusive).
+          // If task started yesterday or today, it can't have a broken streak from yesterday yet logic-wise for "old habits"
+          // Or strictly: logic is, if the habit existed yesterday, did we do it?
+          
+          // Check if start date is ON or BEFORE yesterday
+          if (isBefore(startDate, startOfDay(realNow))) {
+               // Check if completed yesterday
               const doneYesterday = t.completedDates.includes(yesterdayStr);
-              return !doneYesterday; 
+              return !doneYesterday;
           }
           return false;
       });
@@ -62,7 +71,6 @@ export const Dashboard: React.FC = () => {
       return { day: format(d, 'EEE'), count };
   });
 
-  // Weekly Review Metrics (Last 7 Days)
   const weeklyReview = useMemo(() => {
       const start = subDays(realNow, 7);
       let totalCompleted = 0;
@@ -90,8 +98,31 @@ export const Dashboard: React.FC = () => {
       return { totalCompleted, highestStreak, totalSpent, dominantMood };
   }, [tasks, expenses, journal, realNow]);
 
+  // Carousel Logic
+  const memoryItems = useMemo(() => {
+      const journalImages = journal
+          .filter(j => j.images && j.images.length > 0)
+          .map(j => ({ id: j.id, type: 'journal', url: j.images![0], date: j.date, title: j.subject }));
+      
+      const proofImages = proofs
+          .filter(p => p.imageUrl)
+          .map(p => ({ id: p.id, type: 'proof', url: p.imageUrl!, date: p.date, title: tasks.find(t=>t.id === p.taskId)?.name || 'Task Proof' }));
+      
+      return [...journalImages, ...proofImages].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+  }, [journal, proofs, tasks]);
+
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  const nextSlide = () => setCarouselIndex(prev => (prev + 1) % memoryItems.length);
+  const prevSlide = () => setCarouselIndex(prev => (prev - 1 + memoryItems.length) % memoryItems.length);
+
+  const handleCarouselClick = (item: any) => {
+      if (item.type === 'journal') navigate('/journal');
+      else navigate('/proof-wall');
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in relative">
+    <div className="space-y-8 animate-fade-in relative pb-10">
       <Confetti trigger={showConfetti} />
 
       {/* Hero Section */}
@@ -277,30 +308,8 @@ export const Dashboard: React.FC = () => {
                     <Quote size={20} className="fill-current" /> Daily Wisdom
                 </h3>
                 <p className="italic text-green-700 dark:text-green-400 text-sm">
-                   "Consistency is not about being perfect. It's about refusing to give up."
+                   "{quote}"
                 </p>
-            </div>
-
-            {/* Recent Journal */}
-            <div className="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-lg flex items-center gap-2"><BookOpen size={20} className="text-pink-500"/> Recent Thoughts</h3>
-                    <Link to="/journal"><MoreHorizontal size={20} className="text-gray-400 hover:text-gray-600" /></Link>
-                </div>
-                <div className="space-y-4">
-                    {journal.slice(0, 3).map(entry => (
-                        <div key={entry.id} className="p-3 rounded-xl bg-gray-50 dark:bg-black/20 hover:bg-gray-100 dark:hover:bg-black/30 transition-colors cursor-pointer">
-                            <div className="flex justify-between mb-1">
-                                <span className="text-xs font-bold text-gray-400">{format(new Date(entry.date), 'MMM d')}</span>
-                                <span className="text-lg">{entry.mood}</span>
-                            </div>
-                            <h4 className="font-bold text-sm mb-1">{entry.subject}</h4>
-                            <p className="text-xs text-gray-500 line-clamp-2">{entry.content}</p>
-                        </div>
-                    ))}
-                    {journal.length === 0 && <p className="text-center text-sm text-gray-400 py-4">No entries yet.</p>}
-                </div>
-                <Link to="/journal" className="block mt-4 text-center text-sm text-primary font-medium hover:underline">Write an entry</Link>
             </div>
 
             {/* Upcoming Todos */}
@@ -333,6 +342,32 @@ export const Dashboard: React.FC = () => {
             </div>
         </div>
       </div>
+
+      {/* Memory Carousel */}
+      {memoryItems.length > 0 && (
+          <div className="mt-12 bg-white dark:bg-darkcard rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                      <ImageIcon className="text-purple-500" /> Recent Memories
+                  </h3>
+                  <div className="flex gap-2">
+                      <button onClick={prevSlide} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"><ChevronLeft size={20}/></button>
+                      <button onClick={nextSlide} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"><ChevronRight size={20}/></button>
+                  </div>
+              </div>
+              <div className="relative h-64 w-full rounded-2xl overflow-hidden group cursor-pointer" onClick={() => handleCarouselClick(memoryItems[carouselIndex])}>
+                  <img src={memoryItems[carouselIndex].url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Memory" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 p-6">
+                      <span className="text-xs font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded text-white mb-2 inline-block uppercase">
+                          {memoryItems[carouselIndex].type}
+                      </span>
+                      <h4 className="text-white font-bold text-xl">{memoryItems[carouselIndex].title}</h4>
+                      <p className="text-gray-300 text-sm">{format(new Date(memoryItems[carouselIndex].date), 'PPP')}</p>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
