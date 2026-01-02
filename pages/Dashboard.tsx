@@ -1,16 +1,15 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { QUOTES } from '../constants';
 import { format, subDays, addDays, isBefore, parseISO, startOfDay } from 'date-fns';
-import { TrendingUp, CheckCircle, Flame, Activity, Heart, BookOpen, MoreHorizontal, DollarSign, Quote, AlertTriangle, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { TrendingUp, CheckCircle, Flame, Activity, Heart, BookOpen, MoreHorizontal, DollarSign, Quote, AlertTriangle, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon, Smartphone, LogIn, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AreaChart, Area, ResponsiveContainer, Tooltip as ReTooltip } from 'recharts';
 import { Confetti } from '../components/ui/Confetti';
 import { getRealTime, getRealDateString } from '../services/timeService';
 
 export const Dashboard: React.FC = () => {
-  const { user, tasks, todos, expenses, journal, proofs } = useApp();
+  const { user, tasks, todos, expenses, journal, proofs, activeSessions } = useApp();
   const [showConfetti, setShowConfetti] = useState(false);
   const [realNow, setRealNow] = useState(new Date());
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -37,13 +36,7 @@ export const Dashboard: React.FC = () => {
           const startDate = parseISO(t.startDate);
           const yesterdayDate = subDays(realNow, 1);
           
-          // Only check tasks that started BEFORE yesterday (exclusive).
-          // If task started yesterday or today, it can't have a broken streak from yesterday yet logic-wise for "old habits"
-          // Or strictly: logic is, if the habit existed yesterday, did we do it?
-          
-          // Check if start date is ON or BEFORE yesterday
           if (isBefore(startDate, startOfDay(realNow))) {
-               // Check if completed yesterday
               const doneYesterday = t.completedDates.includes(yesterdayStr);
               return !doneYesterday;
           }
@@ -122,54 +115,54 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in relative pb-10">
+    <div className="space-y-8 animate-fade-in relative pb-10 p-4 sm:p-6 lg:p-8">
       <Confetti trigger={showConfetti} />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-8 md:p-12 text-white shadow-2xl transform transition-transform hover:scale-[1.01] duration-500">
-        <div className="relative z-10 grid lg:grid-cols-2 gap-8 items-center">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-6 sm:p-8 md:p-12 text-white shadow-2xl transform transition-transform hover:scale-[1.01] duration-500">
+        <div className="relative z-10 grid lg:grid-cols-2 gap-6 sm:gap-8 items-center">
             <div>
               <div className="inline-block px-3 py-1 rounded-full bg-white/20 text-xs font-semibold mb-4 backdrop-blur-md border border-white/20">
                   {format(realNow, 'EEEE, MMMM do')}
               </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold mb-3 leading-tight tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-extrabold mb-3 leading-tight tracking-tight">
                 Good {realNow.getHours() < 12 ? 'Morning' : 'Evening'}, <br/>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200">{user?.name}</span>!
               </h1>
               
-              <div className="bg-black/20 backdrop-blur-md rounded-xl p-4 border border-white/10 inline-block max-w-lg mt-4 shadow-lg">
-                <p className="italic text-lg md:text-xl font-light opacity-90">"{quote}"</p>
+              <div className="bg-black/20 backdrop-blur-md rounded-xl p-4 sm:p-4 border border-white/10 inline-block max-w-lg mt-4 shadow-lg">
+                <p className="italic text-base sm:text-lg md:text-xl font-light opacity-90">"{quote}"</p>
               </div>
             </div>
             
             {/* Today's Snapshot Card */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-xl relative overflow-hidden group hover:bg-white/15 transition-colors">
-                <div className="absolute top-0 right-0 p-4 opacity-30 group-hover:opacity-50 transition-opacity animate-pulse-slow"><Activity size={40} /></div>
-                <h3 className="font-bold text-xl mb-6">Today's Focus</h3>
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/20 shadow-xl relative overflow-hidden group hover:bg-white/15 transition-colors">
+                <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-30 group-hover:opacity-50 transition-opacity animate-pulse-slow"><Activity size={32} className="sm:w-10 sm:h-10" /></div>
+                <h3 className="font-bold text-lg sm:text-xl mb-4 sm:mb-6">Today's Focus</h3>
                 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     <div>
-                        <div className="flex justify-between text-sm mb-2 font-medium opacity-90">
+                        <div className="flex justify-between text-xs sm:text-sm mb-2 font-medium opacity-90">
                             <span>Daily Habits</span>
                             <span>{habitsDoneToday} / {habitsTotal}</span>
                         </div>
-                        <div className="w-full bg-black/20 rounded-full h-3 overflow-hidden">
+                        <div className="w-full bg-black/20 rounded-full h-2 sm:h-3 overflow-hidden">
                             <div className="bg-white rounded-full h-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.8)]" style={{ width: `${progressPercent}%` }}></div>
                         </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-4">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 border-t border-white/10 pt-3 sm:pt-4">
                         <div className="text-center group-hover:translate-y-[-2px] transition-transform">
-                            <span className="block text-2xl font-bold">{pendingTodos}</span>
-                            <span className="text-xs opacity-70 uppercase tracking-wider">To-Dos</span>
+                            <span className="block text-xl sm:text-2xl font-bold">{pendingTodos}</span>
+                            <span className="text-xs opacity-70 uppercase tracking-wider block mt-1">To-Dos</span>
                         </div>
                         <div className="text-center border-l border-white/10 group-hover:translate-y-[-2px] transition-transform delay-75">
-                            <span className="block text-2xl font-bold">₹{expenses.filter(e => e.date.startsWith(todayStr)).reduce((a,b)=>a+b.amount,0)}</span>
-                            <span className="text-xs opacity-70 uppercase tracking-wider">Spent</span>
+                            <span className="block text-xl sm:text-2xl font-bold">₹{expenses.filter(e => e.date.startsWith(todayStr)).reduce((a,b)=>a+b.amount,0)}</span>
+                            <span className="text-xs opacity-70 uppercase tracking-wider block mt-1">Spent</span>
                         </div>
                         <div className="text-center border-l border-white/10 group-hover:translate-y-[-2px] transition-transform delay-100">
-                            <span className="block text-2xl font-bold">{journal.filter(j=>j.date.startsWith(todayStr)).length}</span>
-                            <span className="text-xs opacity-70 uppercase tracking-wider">Entries</span>
+                            <span className="block text-xl sm:text-2xl font-bold">{journal.filter(j=>j.date.startsWith(todayStr)).length}</span>
+                            <span className="text-xs opacity-70 uppercase tracking-wider block mt-1">Entries</span>
                         </div>
                     </div>
                 </div>
@@ -177,18 +170,49 @@ export const Dashboard: React.FC = () => {
         </div>
       </section>
 
+      {/* NEW: Device Sessions Card */}
+      {activeSessions && activeSessions.length > 1 && (
+        <section className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-3xl shadow-sm border border-blue-100 dark:border-blue-900/30">
+          <div className="flex items-center gap-3 mb-4">
+            <Smartphone className="w-6 h-6 text-blue-600" />
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Active Sessions</h3>
+          </div>
+          <div className="space-y-3 max-h-48 overflow-y-auto">
+            {activeSessions.slice(0, 5).map((session) => (
+              <div key={session.id} className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${session.isCurrent ? 'border-green-400 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 bg-white dark:bg-slate-800 dark:border-gray-700'}`}>
+                <div className={`w-3 h-3 rounded-full ${session.isCurrent ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate text-gray-900 dark:text-white">{session.deviceName}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {session.lastActive ? format(new Date(session.lastActive.seconds * 1000), 'MMM dd, HH:mm') : 'Just now'}
+                  </p>
+                </div>
+                {session.isCurrent && (
+                  <div className="text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-1 rounded-full font-medium">
+                    This Device
+                  </div>
+                )}
+              </div>
+            ))}
+            {activeSessions.length > 5 && (
+              <p className="text-center text-sm text-gray-500 py-2">+{activeSessions.length - 5} more devices</p>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         
         {/* Left Column (Stats & Charts) */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             {/* Quick Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
                     { label: 'Habits', value: tasks.length, icon: TrendingUp, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' },
                     { label: 'Pending', value: pendingTodos, icon: CheckCircle, color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300' },
                     { label: 'Mood', value: journal[0]?.mood || '-', icon: Heart, color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-300' },
-                    { label: 'Spent', value: `₹${expenses.reduce((a,b)=>a+b.amount,0).toFixed(0)}`, icon: DollarSign, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-300' }
+                    { label: 'Devices', value: activeSessions?.length || 1, icon: Users, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300' }
                 ].map((stat, i) => (
                     <div key={i} className="bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center text-center hover:scale-105 transition-transform duration-200 cursor-default">
                         <div className={`p-3 rounded-full mb-2 ${stat.color}`}>
@@ -202,8 +226,8 @@ export const Dashboard: React.FC = () => {
 
              {/* Streak Broken Alert Section */}
              {brokenStreaks.length > 0 && (
-                <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3 text-red-600 dark:text-red-400 font-bold text-lg">
+                <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-2xl p-4 sm:p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3 text-red-600 dark:text-red-400 font-bold text-base sm:text-lg">
                         <AlertTriangle size={24} className="animate-pulse" />
                         <h3>Streak Alert!</h3>
                     </div>
@@ -275,7 +299,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
              {/* Weekly Review Card */}
             <div className="bg-white dark:bg-darkcard p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-purple-500"></div>
