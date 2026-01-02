@@ -26,7 +26,7 @@ export const Journal: React.FC = () => {
   const [newMood, setNewMood] = useState('😊');
   const [newImages, setNewImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]); // Added explicit date picker support
+  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]); 
 
   // Edit State
   const [editSubject, setEditSubject] = useState('');
@@ -45,7 +45,7 @@ export const Journal: React.FC = () => {
               userId: 'current',
               subject: newSubject,
               content: newContent,
-              date: new Date(entryDate).toISOString(), // Use selected date
+              date: new Date(entryDate).toISOString(),
               mood: newMood,
               images: imageUrls,
               createdAt: new Date().toISOString()
@@ -104,7 +104,6 @@ export const Journal: React.FC = () => {
               const entryDate = parseISO(j.date);
               const start = startDate ? parseISO(startDate) : new Date(0);
               const end = endDate ? parseISO(endDate) : new Date();
-              // Fix end date to include the full day
               end.setHours(23, 59, 59);
               matchesDate = isWithinInterval(entryDate, { start, end });
           }
@@ -122,7 +121,6 @@ export const Journal: React.FC = () => {
            <p className="text-gray-500">Capture your thoughts and memories.</p>
        </div>
 
-       {/* Inline Creation */}
        <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 transition-all focus-within:ring-2 focus-within:ring-primary/20">
             <div className="flex justify-between items-center mb-4">
                <input 
@@ -174,7 +172,6 @@ export const Journal: React.FC = () => {
            </div>
        </div>
 
-       {/* Filters */}
        <div className="bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row gap-4 items-center">
            <div className="relative flex-1 w-full flex items-center gap-2">
                <div className="relative flex-1">
@@ -212,7 +209,6 @@ export const Journal: React.FC = () => {
            </div>
        </div>
 
-       {/* List */}
        <div className="grid gap-4">
            {filteredJournal.map(entry => (
                <div key={entry.id} onClick={() => { setViewingEntry(entry); setIsEditing(false); }} className="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer group">
@@ -235,10 +231,8 @@ export const Journal: React.FC = () => {
                    )}
                </div>
            ))}
-           {filteredJournal.length === 0 && <p className="text-center text-gray-500 py-10">No entries found for this period.</p>}
        </div>
 
-       {/* View/Edit Modal (Same as before) */}
        <Modal isOpen={!!viewingEntry} onClose={() => setViewingEntry(null)} title={isEditing ? "Edit Entry" : "Journal Entry"}>
             {viewingEntry && (
                 <div className="space-y-6">
