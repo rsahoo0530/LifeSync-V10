@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Task, Category, TaskType, Proof } from '../types';
@@ -277,6 +276,16 @@ export const Tasks: React.FC = () => {
                 </div>
             );
         })}
+        
+        {filteredTasks.length === 0 && (
+            <div className="col-span-full py-20 text-center rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-slate-800/20">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                    <Plus size={32} />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No habits found</h3>
+                <p className="text-gray-500">Try adjusting your filters or create a new task.</p>
+            </div>
+        )}
       </div>
 
       {/* Edit Modal */}
@@ -318,7 +327,7 @@ export const Tasks: React.FC = () => {
         )}
       </Modal>
 
-      {/* Detail View Modal */}
+      {/* Detail View Modal - FIXED WITH MISSING LOGIC */}
       <Modal isOpen={!!viewingTask} onClose={() => setViewingTask(null)} title="Task Details">
           {viewingTask && (
               <div className="space-y-6">
@@ -357,6 +366,69 @@ export const Tasks: React.FC = () => {
                               <p className="text-red-600 dark:text-red-400 font-medium">{viewingTask.penalty}</p>
                           </div>
                       )}
+                      {/* ✅ ADDED: Start/End Date Display */}
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                          <div>
+                              <h4 className="text-xs text-gray-400 uppercase">Start Date</h4>
+                              <p className="font-mono text-sm">
+                                  {format(parseISO(viewingTask.startDate), "MMM d, yyyy")}
+                              </p>
+                          </div>
+                          <div>
+                              <h4 className="text-xs text-gray-400 uppercase">End Date</h4>
+                              <p className="font-mono text-sm">
+                                  {format(parseISO(viewingTask.endDate), "MMM d, yyyy")}
+                              </p>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* ✅ ADDED: Recent Activity */}
+                  <div>
+                      <h4 className="font-bold mb-3 flex items-center gap-2">
+                          <Calendar size={18} /> Recent Activity
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                          {viewingTask.completedDates
+                              .slice(-7)
+                              .reverse()
+                              .map((date) => (
+                                  <div
+                                      key={date}
+                                      className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-xs font-mono border border-green-200 dark:border-green-800"
+                                  >
+                                      {format(parseISO(date), "MMM d")}
+                                  </div>
+                              ))}
+                          {viewingTask.completedDates.length === 0 && (
+                              <span className="text-gray-400 text-sm">No completions yet.</span>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* ✅ ADDED: Missed Dates */}
+                  {getMissedDates(viewingTask).length > 0 && (
+                      <div>
+                          <h4 className="font-bold mb-3 flex items-center gap-2 text-red-500">
+                              <AlertTriangle size={18} /> Missed (Last 7 Days)
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                              {getMissedDates(viewingTask).map((date) => (
+                                  <div
+                                      key={date.toISOString()}
+                                      className="px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-mono border border-red-100 dark:border-red-900/30"
+                                  >
+                                      {format(date, "MMM d")}
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  <div className="pt-4 border-t dark:border-gray-700 flex justify-end">
+                      <Button variant="secondary" onClick={() => setViewingTask(null)}>
+                          Close
+                      </Button>
                   </div>
               </div>
           )}
