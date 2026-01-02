@@ -37,6 +37,8 @@ interface AppContextType extends AppState {
   resetPassword: (email: string) => Promise<boolean>;
   checkEmailExists: (email: string) => boolean; 
   addTask: (task: Task) => void;
+  updateTask: (task: Task) => void;
+  deleteTask: (id: string) => void;
   markTask: (taskId: string, proof: Proof) => void;
   addJournal: (entry: JournalEntry) => void;
   updateJournal: (entry: JournalEntry) => void;
@@ -393,7 +395,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error: any) {
         console.error("Signup Error", error);
         if (error.code === 'auth/email-already-in-use') {
-             showToast('Email already in use.', 'error');
+             showToast('Email already in use. Please log in instead.', 'error');
         } else if (error.code === 'auth/weak-password') {
              showToast('Password is too weak.', 'error');
         } else {
@@ -411,6 +413,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return true;
     } catch (error: any) {
         console.error("Login Error", error);
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            showToast('Invalid email or password.', 'error');
+        } else {
+            showToast(error.message || 'Authentication failed.', 'error');
+        }
         return false;
     }
   };
@@ -521,6 +528,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch(e) {
         console.error("Add Task Error", e);
         showToast('Failed to save task to cloud.', 'error');
+    }
+  };
+
+  const updateTask = async (task: Task) => {
+    if (!user) return;
+    try {
+        const encryptedTask = encryptObject(task, user.id, ['name', 'why', 'penalty']);
+        await updateDoc(doc(db, 'users', user.id, 'tasks', task.id), encryptedTask as any);
+        playSound('click');
+        showToast('Task updated.', 'success');
+    } catch(e) {
+        console.error("Update Task Error", e);
+        showToast('Failed to update task.', 'error');
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    if (!user) return;
+    try {
+        await deleteDoc(doc(db, 'users', user.id, 'tasks', id));
+        playSound('click');
+        showToast('Task deleted.', 'info');
+    } catch(e) {
+        console.error("Delete Task Error", e);
+        showToast('Failed to delete task.', 'error');
     }
   };
 
@@ -655,6 +687,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
           const encryptedChallenge = encryptObject(challenge, user.id, ['title', 'description']);
           await updateDoc(doc(db, 'users', user.id, 'challenges', challenge.id), encryptedChallenge as any);
+          playSound('click');
+          showToast('Challenge updated.', 'success');
       } catch (e) {
           console.error(e);
       }
@@ -704,7 +738,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{
       user, tasks, proofs, journal, todos, expenses, challenges, settings, toasts, registeredUsers: [],
       login, logout, signup, resetPassword, checkEmailExists, 
-      addTask, markTask, 
+      addTask, updateTask, deleteTask, markTask, 
       addJournal, updateJournal, deleteJournal,
       addTodo, toggleTodo, deleteTodo, 
       addExpense, deleteExpense, 
