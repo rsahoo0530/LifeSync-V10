@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.cloudflare.com/workers/configuration/wrangler-schema.json",
-  "name": "lifesync2026",  // Change to your exact project name from dashboard
+  "name": "lifesync",  // Change to your exact project name from dashboard
   "compatibility_date": "2026-01-01",
   "assets": {
     "directory": "./dist",
