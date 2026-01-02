@@ -68,6 +68,8 @@ export const Auth: React.FC = () => {
             const success = await signup(email, password, name);
             if (success) {
                 showToast('Account initialized.', 'success');
+                // Auto login or switch to login
+                setMode('login');
                 generateCaptcha();
             }
         } else if (mode === 'login') {
@@ -75,21 +77,21 @@ export const Auth: React.FC = () => {
             if (success) {
                 navigate('/');
             } else {
-                 showToast('Authentication failed.', 'error');
+                 // Context handles specific toasts, but we play error sound here
                  playSound('error');
                  generateCaptcha();
             }
         } else {
             const success = await resetPassword(email);
             if (success) {
-                showToast('Recovery link sent.', 'info');
+                showToast('Recovery link sent to your email.', 'info');
                 setMode('login');
             }
             generateCaptcha();
         }
     } catch (error) {
         console.error(error);
-        showToast('System error.', 'error');
+        showToast('System error occurred.', 'error');
     } finally {
         setLoading(false);
     }
@@ -107,7 +109,7 @@ export const Auth: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0d1117] text-gray-100 relative overflow-hidden font-sans selection:bg-cyan-500/30">
       
-      {/* Background - Adjusted for better visibility */}
+      {/* Background */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-slate-800 via-gray-950 to-black opacity-80"></div>
       
       {/* Subtle Grid */}
@@ -269,7 +271,6 @@ export const Auth: React.FC = () => {
             </div>
         </div>
         
-        {/* Decorative Bottom Text */}
         <div className="text-center mt-6 text-xs text-gray-500 font-mono flex items-center justify-center gap-2 opacity-60">
             <Fingerprint size={12} /> SYSTEM SECURE V10
         </div>
